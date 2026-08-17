@@ -1,47 +1,41 @@
+# firmware
 firmware/build/
 firmware/sdkconfig
 firmware/sdkconfig.old
 firmware/managed_components/
 firmware/dependencies.lock
 
+# cert
 *.pem
 *.key
-
-*.xcuserdata/
-*.xcworkspace/xcuserdata/
-*.xcworkspace/xcshareddata/workspace.userstates
-
-controller/.build/
-controller/DerivedData/
-controller/Packages/
-controller/*.xcodeproj/project.xcworkspace/xcuserdata/
-
 *.mobileprovision
 *.cer
 
+# xcode app
+application/.build/
+application/DerivedData/
+application/Packages/
+application/DNFA.xcodeproj/project.xcworkspace/xcuserdata/
+application/DNFA.xcodeproj/xcuserdata/
+application/DNFA.xcworkspace/xcuserdata/
+application/DNFA.xcworkspace/xcshareddata/workspace.userstates
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# system
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 
+# ide
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
 *.swp
 *~
-
-
-
-# xcode
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
-
-# Xcode build products
-build/
-DerivedData/
-*.ipa
-*.dSYM.zip
-*.dSYM
