@@ -31,3 +31,17 @@ controller/*.xcodeproj/project.xcworkspace/xcuserdata/
 .idea/
 *.swp
 *~
+
+
+
+# xcode
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Xcode build products
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
