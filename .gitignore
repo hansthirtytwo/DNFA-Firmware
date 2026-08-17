@@ -15,6 +15,7 @@ firmware/dependencies.lock
 application/.build/
 application/DerivedData/
 application/Packages/
+application/DNFA.xcodeproj/
 application/DNFA.xcodeproj/project.xcworkspace/xcuserdata/
 application/DNFA.xcodeproj/xcuserdata/
 application/DNFA.xcworkspace/xcuserdata/
