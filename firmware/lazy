@@ -1,0 +1,4 @@
+unset IDF_PYTHON_ENV_PATH
+export IDF_PATH="$HOME/esp-idf-v5.5.1"
+. "$IDF_PATH/export.sh"
+idf.py -p /dev/cu.usbserial-10 flash
