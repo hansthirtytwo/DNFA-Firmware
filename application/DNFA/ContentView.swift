@@ -5,45 +5,54 @@
 //  Created by hansthirtytwo
 //
 
+
 import SwiftUI
+
+struct WifiNetwork: Codable, Identifiable, Hashable {
+    var id: String { ssid }
+    let ssid: String
+    let rssi: Int
+    let sec: String
+    let channel: String   // was Int — firmware sends it quoted
+    let mac: String
+}
+
+struct ScanResponse: Codable {
+    let rows: [WifiNetwork]
+}
 
 struct ContentView: View {
     @StateObject private var bleManager = BLEManager()
+    @State private var path = NavigationPath()
+    
+    
 
     var body: some View {
-        List {
-            if bleManager.isConnected {
-                Text("Device connected")
-                Button("Test") {
-                    bleManager.sendCommand("test")
+        if bleManager.isConnected || ProcessInfo.isInsideXcodeCanvas {
+            NavigationStack(path: $path) {
+                List {
+                    NavigationLink("Wi-Fi") {
+                        WiFiView(bleManager: bleManager)
+                    }
                 }
-
-                if bleManager.lastMessage != "Connected" {
-                    Text(bleManager.lastMessage)
-                }
-            } else {
-                Text("No devices connected")
-
-                if !bleManager.lastMessage.isEmpty {
-                    Text(bleManager.lastMessage)
-                }
+                .navigationTitle("DNFA")
             }
-
-            Text("BT state: \(bleManager.bluetoothState.description)")
-
-            if bleManager.isScanning {
-                Button("Stop Scanning") {
-                    bleManager.stopScanning()
+        } else {
+            List {
+                if bleManager.isScanning {
+                    Button("Stop Scanning") {
+                        bleManager.stopScanning()
+                    }
+                } else {
+                    Button("Start Scanning") {
+                        bleManager.startScanning()
+                    }
                 }
-            } else {
-                Button("Start Scanning") {
-                    bleManager.startScanning()
-                }
-            }
 
-            ForEach(bleManager.foundDevices) { device in
-                Button("\(device.name): Connect") {
-                    bleManager.connect(to: device.identifier)
+                ForEach(bleManager.foundDevices) { device in
+                    Button("\(device.name): Connect") {
+                        bleManager.connect(to: device.identifier)
+                    }
                 }
             }
         }

@@ -7,12 +7,88 @@
 
 import SwiftUI
 
+
+
 struct WiFiView: View {
+    
+    @StateObject var bleManager: BLEManager
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        List {
+            
+            
+            NavigationLink("Scan Networks") {
+                List {
+                    Button("Scan Wi-Fi (gonna take a couple secs once u press it)") {
+                        bleManager.sendCommand("scan_wifi")
+                    }
+                    
+                   
+                    
+
+                    ForEach(bleManager.wifi_scanResults) { network in
+                        DisclosureGroup("\(network.ssid)") {
+                            LazyVGrid(columns: [GridItem(.flexible()),GridItem(.flexible())]) {
+                                
+                                VStack {
+                                    Text("DBM")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.secondary)
+                                    Text("\(network.rssi)")
+                                        .font(.title3)
+                                        .bold()
+                                }
+                                VStack {
+                                    Text("SECURITY")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.secondary)
+                                    Text("\(network.sec)")
+                                        .font(.title3)
+                                        .bold()
+                                }
+                                
+                            }
+                            HStack {
+                                Text("MAC")
+                                Spacer()
+                                Text("\(network.mac)")
+                            }
+                        }
+                    }
+                }
+            }
+            
+            NavigationLink("Network Vulnerabilities") {
+                List {
+                    Button("Scan Wi-Fi (gonna take a couple secs once u press it)") {
+                        bleManager.sendCommand("scan_wifi")
+                    }
+                    
+                    
+                    
+                    
+                    
+                    
+                    ForEach(bleManager.wifi_scanResults) { network in
+                        
+                        
+                        WiFiNetworkVul(network: network)
+                        
+                    }
+                }
+                
+                
+                
+            }
+            
+            
+        }
+        .navigationTitle("Wi-Fi")
     }
 }
 
 #Preview {
-    WiFiView()
+    @Previewable @StateObject var bleManager = BLEManager()
+    NavigationStack {
+        WiFiView(bleManager: bleManager)
+    }
 }

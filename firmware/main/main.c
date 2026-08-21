@@ -9,6 +9,9 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "driver/gpio.h"
+#include "esp_wifi.h"
+#include "wifi.h"
+
 
 #define TAG "BLE"
 #define DEVICE_NAME "DnFA-C5"
@@ -40,7 +43,7 @@ static const ble_uuid128_t TLM_CHR_UUID = BLE_UUID128_INIT(
 );
 
 static void start_advertising(void);
-void ble_send_telemetry(const char *msg);
+void ble_send_telemetry(const char *msg); 
 
 // tut for noobs like me: (to be continued... maybe.)
 // how does this ble thing work???
@@ -63,35 +66,38 @@ void ble_send_telemetry(const char *msg);
 //      ble_svc_gap_device_name_set("DnFA-C5");         - set device name
 //      nimble_port_freertos_init(bleprph_host_task);   - start ble host stack
 
-static int
-cmd_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle,
-                   struct ble_gatt_access_ctxt *ctxt, void *arg)
-{
-    (void)conn_handle;
-    (void)attr_handle;
-    (void)arg;
 
-    if (ctxt->op != BLE_GATT_ACCESS_OP_WRITE_CHR) return BLE_ATT_ERR_UNLIKELY;
 
-    uint16_t len = OS_MBUF_PKTLEN(ctxt->om);
-    if (len == 0) return 0;
-    if (len > sizeof(cmd_chr_data) - 1) len = sizeof(cmd_chr_data) - 1;
+// GET
 
-    if (ble_hs_mbuf_to_flat(ctxt->om, cmd_chr_data, len, NULL) != 0)
-        return BLE_ATT_ERR_UNLIKELY;
 
-    cmd_chr_data[len] = '\0';
 
-    ESP_LOGI(TAG, "Received command: %s", (char *)cmd_chr_data);
-
-    if (strcmp((char *)cmd_chr_data, "test") == 0) {
-        ESP_LOGI(TAG, "Got test command, replying");
-        ble_send_telemetry("worked");
-    } else {
-        ESP_LOGW(TAG, "Unknown command: %s", (char *)cmd_chr_data);
-    }
-    return 0;
+uint8_t* get_cmd_chr_data(void) {
+    return cmd_chr_data;
 }
+
+uint16_t ble_get_conn_handle(void) {
+    return s_conn_handle;
+}
+
+
+
+
+// WIFI
+
+
+
+
+
+
+
+// BLUETOOTH
+
+
+
+
+
+
 
 // NEW: telemetry characteristic access callback. Notify-only chars still
 // need an access_cb registered (NimBLE requires a non-NULL fn pointer);
@@ -107,8 +113,7 @@ tlm_chr_access_cb(uint16_t conn_handle, uint16_t attr_handle,
     return BLE_ATT_ERR_UNLIKELY;
 }
 
-// NEW: helper to push a telemetry string to the connected phone.
-// Call this from wherever your sensor/status loop lives.
+// send to phone
 void ble_send_telemetry(const char *msg)
 {
     if (s_conn_handle == BLE_HS_CONN_HANDLE_NONE || !s_tlm_subscribed) {
@@ -133,7 +138,6 @@ static const struct ble_gatt_chr_def s_chrs[] = {
         .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
     },
     {
-        // NEW: telemetry characteristic, matches iOS's telemetryCharUUID
         .uuid = &TLM_CHR_UUID.u,
         .access_cb = tlm_chr_access_cb,
         .val_handle = &tlm_chr_val_handle,
@@ -151,9 +155,6 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     { 0 },
 };
 
-// NEW: GAP event handler. Previously ble_gap_adv_start() was passed a NULL
-// callback, so the firmware never knew about connects/disconnects/subscribes
-// and could never restart advertising or send notifications.
 static int
 gap_event_handler(struct ble_gap_event *event, void *arg)
 {
@@ -224,8 +225,6 @@ start_advertising(void)
     adv_params.itvl_min = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
     adv_params.itvl_max = BLE_GAP_ADV_FAST_INTERVAL1_MAX;
 
-    // pass gap_event_handler instead of NULL so connect/disconnect/
-    // subscribe events actually reach us.
     rc = ble_gap_adv_start(s_own_addr_type, NULL, BLE_HS_FOREVER,
                            &adv_params, gap_event_handler, NULL);
     if (rc == 0 || rc == BLE_HS_EALREADY) {
@@ -262,6 +261,12 @@ bleprph_host_task(void *param)
     nimble_port_freertos_deinit();
 }
 
+
+
+
+
+
+
 void
 app_main(void)
 {
@@ -273,6 +278,16 @@ app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
+
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_start();
 
     rc = nimble_port_init();
     ESP_LOGI(TAG, "nimble_port_init rc=%d", rc);

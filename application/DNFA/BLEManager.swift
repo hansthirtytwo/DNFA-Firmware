@@ -34,9 +34,9 @@ extension CBManagerState {
 
 class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
-    @Published var isConnected: Bool = false     // was a plain `var` — SwiftUI never observed changes
-    @Published var isScanning: Bool = false       // was referenced but never declared
-    @Published var lastMessage: String = ""       // was referenced but never declared
+    @Published var isConnected: Bool = false
+    @Published var isScanning: Bool = false
+    @Published var lastMessage: String = ""    
 
     let serviceUUID = CBUUID(string: "68ABF545-7BC8-49F0-BCD0-37E32B52E0AB")
     let controlCharUUID = CBUUID(string: "68ABF545-7BC8-49F0-BCD0-37E32B52E0AC") // phone -> ESP32
@@ -54,7 +54,10 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     private var manualConnectID: UUID?
 
     @Published var bluetoothState: CBManagerState = .unknown   
-
+    
+    @Published var wifi_scanResults: [WifiNetwork] = []
+    
+    
     override init() {
         super.init()
         // Do not touch CoreBluetooth hardware inside Xcode previews — creating
@@ -265,9 +268,21 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
 
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        guard characteristic.uuid == telemetryCharUUID, let data = characteristic.value,
-              let string = String(data: data, encoding: .utf8) else { return }
+        guard characteristic.uuid == telemetryCharUUID else { return }
+        if let error = error {
+            print("BLE notification error: \(error)")
+            return
+        }
+        guard let data = characteristic.value else {
+            print("BLE notification: nil data")
+            return
+        }
+        guard let string = String(data: data, encoding: .utf8) else {
+            print("BLE notification: not valid UTF-8 (\(data.count) bytes)")
+            return
+        }
 
+        print("BLE recv \(data.count) bytes: \(string.prefix(80))")
 
         DispatchQueue.main.async {
             self.lastMessage = string
@@ -284,18 +299,41 @@ class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CBPeriph
     func sendCommand(_ command: String) {
         guard let peripheral = peripheral, let controlChar = controlChar,
               let data = command.data(using: .utf8) else { return }
+        print("Sending command: '\(command)' (\(data.count) bytes)") // add this
+
         let type: CBCharacteristicWriteType = controlChar.properties.contains(.write)
             ? .withResponse : .withoutResponse
         peripheral.writeValue(data, for: controlChar, type: type)
     }
 
 
+    
     // MARK: - Telemetry parsing
 
 
-    private func handleTelemetry(_ message: String) {
-        if message == "test" {
+    private var telemetryBuffer = ""
 
+    private func handleTelemetry(_ chunk: String) {
+        if chunk == "__END__" {
+            defer { telemetryBuffer = "" }
+            print("TELEMETRY __END__ — buffer has \(telemetryBuffer.utf8.count) bytes")
+            guard let data = telemetryBuffer.data(using: .utf8) else { return }
+            do {
+                let response = try JSONDecoder().decode(ScanResponse.self, from: data)
+                print("Decoded \(response.rows.count) networks")
+                
+                
+                // exclude duplicate networks
+                
+                wifi_scanResults =  Array(Set(response.rows))
+            } catch {
+                print("Telemetry decode failed (\(telemetryBuffer.utf8.count) bytes): \(error)")
+                print("Raw: \(telemetryBuffer)")
+            }
+            return
         }
+
+        print("TELEMETRY chunk (\(chunk.count) bytes), buffer now \(telemetryBuffer.utf8.count + chunk.utf8.count)")
+        telemetryBuffer += chunk
     }
 }
